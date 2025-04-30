@@ -22,10 +22,13 @@
 #include <stdio.h>
 #include <values.h>
 #include <time.h>
+#include <mpi.h>
 
 #include "defines.h"
 #include "faux_s.h"
 #include "diffusion_s.h"
+
+
 
 /************************************************************************************/
 void init_grid_chips (int conf, struct info_param param, struct info_chips *chips, int **chip_coord, float *grid_chips)
@@ -65,9 +68,21 @@ int main (int argc, char *argv[])
   float *grid, *grid_chips, *grid_aux;  
   struct info_results BT;
   
-  int    conf, i;
+  int    conf, i, j, k;
   struct timespec t0, t1;
   double tej, Tmean;
+
+  //Arrays para el reparto de filas
+  int N;
+  int *tam, *dis;
+   tam = malloc(npr * sizeof(int));
+  dis = malloc(npr * sizeof(int));
+
+
+  MPI_Init (&argc, &argv);
+  MPI_Comm_rank (MPI_COMM_WORLD, &pid);
+  MPI_Comm_size (MPI_COMM_WORLD, &npr);
+
 
  // reading initial data file
   if (argc != 2) {
@@ -76,6 +91,9 @@ int main (int argc, char *argv[])
   } 
 
   read_data (argv[1], &param, &chips, &chip_coord);
+
+  //Numero de filas a repartir
+  int N = param.scale * 100;
 
   printf ("\n  ===================================================================");
   printf ("\n    Thermal diffusion - SERIAL version ");
@@ -92,13 +110,25 @@ int main (int argc, char *argv[])
   BT.bgrid = malloc(NROW*NCOL * sizeof(float));
   BT.cgrid = malloc(NROW*NCOL * sizeof(float));
   BT.Tmean = MAXDOUBLE;
-  
+
   // loop to process chip configurations
   for (conf=0; conf<param.nconf; conf++)
   {
-    // inintial values for grids
-    init_grid_chips (conf, param, chips, chip_coord, grid_chips);
-    init_grids (param, grid, grid_aux);
+    if (pid == 0){
+      // inintial values for grids
+      init_grid_chips (conf, param, chips, chip_coord, grid_chips);
+      init_grids (param, grid, grid_aux);
+    }
+
+    //Repartimos las filas
+    for (i=0; i<npr;i++){
+      tam[i]= (i+1)*NROW/npr - i*NROW/npr + 1;
+      if (pid!=0 && pid!=npr-1) tam[i]+=1;
+      if (i == 0) dis[i] = 0;
+      else dis[i] = dis[i-1] + tam[i-1] - 1;
+    }
+
+    MPI_Scatterv(grid, tam, dis, MPI_FLOAT, etc.);
 
     // main loop: thermal injection/disipation until convergence (t_delta or max_iter)
     Tmean = calculate_Tmean (param, grid, grid_chips, grid_aux);
@@ -114,7 +144,7 @@ int main (int argc, char *argv[])
   printf ("   > Time (serial): %1.3f s \n\n", tej);
   // writing best configuration results
   results (param, &BT, argv[1]);
-  
+
 
   free (grid);free (grid_chips);free (grid_aux);
   free (BT.bgrid);free (BT.cgrid);
@@ -122,6 +152,7 @@ int main (int argc, char *argv[])
   for (i=0; i<param.nconf; i++) free (chip_coord[i]);
   free (chip_coord);
 
+  MPI_Finalize ();
   return (0);
 }
 
