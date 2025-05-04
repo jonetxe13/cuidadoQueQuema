@@ -29,17 +29,17 @@ void thermal_update (struct info_param param, float *grid, float *grid_chips, in
 }
 
 /************************************************************************************/
-double thermal_diffusion (struct info_param param, float *grid, float *grid_aux, int NROW_loc)
+double thermal_diffusion (struct info_param param, float *grid, float *grid_aux, int *NROW_loc)
 {
   int    i, j;
   double  T;
   double Tfull = 0.0;
 
-  // if (pid!=0){
-  //   MPI_Recv(grid, NCOL, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
-  // }
+  if (pid!=0){
+    MPI_Recv(grid, NCOL, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
+  }
 
-  for (i=1; i<NROW_loc-1; i++)
+  for (i=1; i<NROW_loc[pid]-1; i++)
   {
     for (j=1; j<NCOL-1; j++)
     {
@@ -53,12 +53,12 @@ double thermal_diffusion (struct info_param param, float *grid, float *grid_aux,
     }
   }
 
-  // if (pid!=npr-1){
-  //   MPI_Ssend(&grid[(NROW_loc-2)*NCOL+1], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
-  // }
+  if (pid!=npr-1){
+    MPI_Ssend(&grid[(NROW_loc[pid]-2)*NCOL+1], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
+  }
 
   //new values for the grid
-  for (i=1; i<NROW_loc-1; i++)
+  for (i=1; i<NROW_loc[pid]-1; i++)
     for (j=1; j<NCOL-1; j++)
       grid[i*NCOL+j] = grid_aux[i*NCOL+j]; 
 
@@ -68,11 +68,12 @@ double thermal_diffusion (struct info_param param, float *grid, float *grid_aux,
 /************************************************************************************/
 double calculate_Tmean (struct info_param param, float *grid, float *grid_chips, float *grid_aux, int *NROW_loc)
 {
-  int    i, j, end, niter;
+  int    i, j, end, niter, pid;
   double  Tfull, Tfull_tot;
   double Tmean, Tmean0 = param.t_ext;
 
   end = 0; niter = 0;
+  MPI_Comm_rank( MPI_COMM_WORLD, &pid);
 
   while (end == 0)
   {
@@ -83,13 +84,13 @@ double calculate_Tmean (struct info_param param, float *grid, float *grid_chips,
     thermal_update (param, grid, grid_chips, NROW_loc);
 
     // thermal diffusion
-    // Tfull = thermal_diffusion(param, grid, grid_aux, NROW_loc);
+    Tfull = thermal_diffusion(param, grid, grid_aux, NROW_loc);
 
 
     // convergence every 10 iterations
     if (niter % 10 == 0)
     {
-      // MPI_Reduce(&Tfull, &Tfull_tot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+      MPI_Reduce(&Tfull, &Tfull_tot, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
       if (pid==0)
       {
         Tmean = Tfull_tot / ((NCOL-2)*(NROW-2));
@@ -97,10 +98,11 @@ double calculate_Tmean (struct info_param param, float *grid, float *grid_chips,
           end = 1;
         else Tmean0 = Tmean;
       }
-      // MPI_Bcast(&end, 1, MPI_INT, 0, MPI_COMM_WORLD);
+      MPI_Bcast(&end, 1, MPI_INT, 0, MPI_COMM_WORLD);
     }
   } // end while 
-  printf ("Iter (ser): %d\t", niter);
+  if(pid==0)
+    printf ("Iter (par): %d\t", niter);
   return (Tmean);
 }
 

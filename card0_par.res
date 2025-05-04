@@ -103,5 +103,5 @@ Tmin_ini 20.0  Tmax_ini 160.0
 
 
 
- >>> BEST CONFIGURATION: 1	 Tmean: 0.00
+ >>> BEST CONFIGURATION: 3	 Tmean: 46.22
 
