@@ -149,7 +149,7 @@ int main (int argc, char *argv[])
 
 
     // main loop: thermal injection/disipation until convergence (t_delta or max_iter)
-    // Tmean = calculate_Tmean (param, trozo, trozo_chips, trozo_aux, NROW_loc);
+    Tmean = calculate_Tmean (param, trozo, trozo_chips, trozo_aux, NROW_loc);
     if (pid==0) printf ("  Config: %2d    Tmean: %1.2f\n", conf + 1, Tmean);
 
     // //Transformamos tamaños y distancias para recibir

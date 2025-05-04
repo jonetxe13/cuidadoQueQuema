@@ -7,12 +7,14 @@ extern int pid;
 extern int npr;
 
 /************************************************************************************/
-void thermal_update (struct info_param param, float *grid, float *grid_chips, int NROW_loc)
+void thermal_update (struct info_param param, float *grid, float *grid_chips, int *NROW_loc)
 {
-  int i, j, a, b;
+  int i, j, a, b, pid;
+
+  MPI_Comm_rank( MPI_COMM_WORLD, &pid);
 
   // heat injection at chip positions
-  for (i=1; i<NROW_loc-1; i++)
+  for (i=1; i<NROW_loc[pid]-1; i++)
   for (j=1; j<NCOL-1; j++) 
     if (grid_chips[i*NCOL+j] > grid[i*NCOL+j])
       grid[i*NCOL+j] += 0.05 * (grid_chips[i*NCOL+j] - grid[i*NCOL+j]);
@@ -21,7 +23,7 @@ void thermal_update (struct info_param param, float *grid, float *grid_chips, in
   a = 0.44*(NCOL-2) + 1;
   b = 0.56*(NCOL-2) + 1;
 
-  for (i=1; i<NROW_loc-1; i++)
+  for (i=1; i<NROW_loc[pid]-1; i++)
   for (j=a; j<b; j++)
       grid[i*NCOL+j] -= 0.01 * (grid[i*NCOL+j] - param.t_ext);
 }
@@ -64,7 +66,7 @@ double thermal_diffusion (struct info_param param, float *grid, float *grid_aux,
 }
 
 /************************************************************************************/
-double calculate_Tmean (struct info_param param, float *grid, float *grid_chips, float *grid_aux, int NROW_loc)
+double calculate_Tmean (struct info_param param, float *grid, float *grid_chips, float *grid_aux, int *NROW_loc)
 {
   int    i, j, end, niter;
   double  Tfull, Tfull_tot;
@@ -81,7 +83,7 @@ double calculate_Tmean (struct info_param param, float *grid, float *grid_chips,
     thermal_update (param, grid, grid_chips, NROW_loc);
 
     // thermal diffusion
-    Tfull = thermal_diffusion(param, grid, grid_aux, NROW_loc);
+    // Tfull = thermal_diffusion(param, grid, grid_aux, NROW_loc);
 
 
     // convergence every 10 iterations
