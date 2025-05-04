@@ -1,69 +1,20 @@
 
   ===================================================================
-    Thermal diffusion - SERIAL version 
+    Thermal diffusion - PAR version 
     200 x 100 points, 4 chips
     T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
   ===================================================================
 
-
-  ===================================================================
-    Thermal diffusion - SERIAL version 
-    200 x 100 points, 4 chips
-
-  ===================================================================
-    Thermal diffusion - SERIAL version 
-    T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
-  ===================================================================
-
-    200 x 100 points, 4 chips
-    T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
-  ===================================================================
+Iter (par): 3600	  Config:  1    Tmean: 34.10
+Iter (par): 3400	  Config:  2    Tmean: 33.33
+Iter (par): 3600	  Config:  3    Tmean: 33.55
+Iter (par): 3600	  Config:  4    Tmean: 33.36
 
 
-  ===================================================================
-    Thermal diffusion - SERIAL version 
-
-  ===================================================================
-    Thermal diffusion - SERIAL version 
-
-  ===================================================================
-    Thermal diffusion - SERIAL version 
-    200 x 100 points, 4 chips
-    200 x 100 points, 4 chips
-    T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
-  ===================================================================
-
-    T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
-  ===================================================================
-
-
-  ===================================================================
-    Thermal diffusion - SERIAL version 
-
-  ===================================================================
-    Thermal diffusion - SERIAL version 
-    200 x 100 points, 4 chips
-    200 x 100 points, 4 chips
-    T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
-  ===================================================================
-
-    T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
-  ===================================================================
-
-    200 x 100 points, 4 chips
-    T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
-  ===================================================================
-
-Iter (par): 510	  Config:  1    Tmean: 45.05
-Iter (par): 500	  Config:  2    Tmean: 45.16
-Iter (par): 540	  Config:  3    Tmean: 43.78
-Iter (par): 600	  Config:  4    Tmean: 45.93
-
-
- >>> Best configuration:  3    Tmean: 43.78
-   > Time (serial): 0.322 s 
+ >>> Best configuration:  2    Tmean: 33.33
+   > Time (par): 0.897 s 
 
 
 
- >>> BEST CONFIGURATION:  3	 Tmean: 43.78
+ >>> BEST CONFIGURATION:  2	 Tmean: 33.33
 

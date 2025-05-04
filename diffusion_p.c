@@ -101,8 +101,12 @@ double calculate_Tmean (struct info_param param, float *grid, float *grid_chips,
       MPI_Bcast(&end, 1, MPI_INT, 0, MPI_COMM_WORLD);
     }
   } // end while 
+
+  //sacar el total de las iteraciones y mandarlas a pid=0
+  int niter_total;
+  MPI_Reduce(&niter, &niter_total, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
   if(pid==0)
-    printf ("Iter (par): %d\t", niter);
+    printf ("Iter (par): %d\t", niter_total);
   return (Tmean);
 }
 

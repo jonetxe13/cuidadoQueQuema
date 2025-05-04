@@ -99,12 +99,13 @@ int main (int argc, char *argv[])
 
   //Numero de filas a repartir
   //int N = param.scale * 100;
-
-  printf ("\n  ===================================================================");
-  printf ("\n    Thermal diffusion - SERIAL version ");
-  printf ("\n    %d x %d points, %d chips", RSIZE*param.scale, CSIZE*param.scale, param.nchip);
-  printf ("\n    T_ext = %1.1f, Tmax_chip = %1.1f, T_delta: %1.3f, Max_iter: %d", param.t_ext, param.tmax_chip, param.t_delta, param.max_iter);
-  printf ("\n  ===================================================================\n\n");
+  if(pid==0){
+    printf ("\n  ===================================================================");
+    printf ("\n    Thermal diffusion - PAR version ");
+    printf ("\n    %d x %d points, %d chips", RSIZE*param.scale, CSIZE*param.scale, param.nchip);
+    printf ("\n    T_ext = %1.1f, Tmax_chip = %1.1f, T_delta: %1.3f, Max_iter: %d", param.t_ext, param.tmax_chip, param.t_delta, param.max_iter);
+    printf ("\n  ===================================================================\n\n");
+  }
   
   if (pid==0) clock_gettime (CLOCK_REALTIME, &t0);
 
@@ -153,23 +154,23 @@ int main (int argc, char *argv[])
     if (pid==0) printf ("  Config: %2d    Tmean: %1.2f\n", conf + 1, Tmean);
 
     // //Transformamos tamaños y distancias para recibir
-    // for (i=0;i<npr;i++){
-    //   if (i==0){
-    //     tam[i] = tam[i]-NCOL;
-    //   }
-    //   else if (i==npr){
-    //     tam[i] = tam[i]-NCOL;
-    //     dis[i] = dis[i-1]-NCOL;
-    //   }
-    //   else{
-    //     tam[i] = tam[i]-(2*NCOL);
-    //     dis[i]= dis[i-1] + tam[i-1];
-    //   }
-    // }
+    for (i=0;i<npr;i++){
+      if (i==0){
+        tam[i] = tam[i]-NCOL;
+      }
+      else if (i==npr){
+        tam[i] = tam[i]-NCOL;
+        dis[i] = dis[i-1]-NCOL;
+      }
+      else{
+        tam[i] = tam[i]-(2*NCOL);
+        dis[i]= dis[i-1] + tam[i-1];
+      }
+    }
 
     //Recibimos cada trozo a grid y grid_chips
-    // MPI_Gatherv(trozo, tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    // MPI_Gatherv(trozo_chips, tam[pid], MPI_FLOAT, grid_chips, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Gatherv(trozo, tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Gatherv(trozo_chips, tam[pid], MPI_FLOAT, grid_chips, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
     // processing configuration results 
     if (pid==0) results_conf (conf, Tmean, param, grid, grid_chips, &BT);
@@ -179,7 +180,7 @@ int main (int argc, char *argv[])
     clock_gettime (CLOCK_REALTIME, &t1);
     tej = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec)/(double)1e9;
     printf ("\n\n >>> Best configuration: %2d    Tmean: %1.2f\n", BT.conf + 1, BT.Tmean); 
-    printf ("   > Time (serial): %1.3f s \n\n", tej);
+    printf ("   > Time (par): %1.3f s \n\n", tej);
     // writing best configuration results
     results (param, &BT, argv[1]);
   }
