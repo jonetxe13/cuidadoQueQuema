@@ -76,8 +76,6 @@ int main (int argc, char *argv[])
   //Arrays para el reparto de filas
   int N;
   int *tam, *dis, *NROW_loc;
-  tam = dis = NROW_loc = malloc(npr * sizeof(int));
-
   //Para que cada proceso reciba sus trozos en el scatterv
   float *trozo, *trozo_chips, *trozo_aux;
 
@@ -86,6 +84,10 @@ int main (int argc, char *argv[])
   MPI_Comm_rank (MPI_COMM_WORLD, &pid);
   MPI_Comm_size (MPI_COMM_WORLD, &npr);
 
+
+  tam = malloc(npr * sizeof(int));
+  dis = malloc(npr * sizeof(int));
+  NROW_loc = malloc(npr * sizeof(int));
 
  // reading initial data file
   if (argc != 2) {
@@ -117,6 +119,7 @@ int main (int argc, char *argv[])
   // loop to process chip configurations
   for (conf=0; conf<param.nconf; conf++)
   {
+    // printf("holaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
     if (pid == 0){
       // inintial values for grids
       init_grid_chips (conf, param, chips, chip_coord, grid_chips);
@@ -125,7 +128,7 @@ int main (int argc, char *argv[])
 
     //Repartimos las filas
     for (i=0; i<npr;i++){
-      NROW_loc[i]= (i+1)*NROW/npr - i*NROW/npr + 1;
+      NROW_loc[i]= (i+1)*(NROW/npr) - (i*NROW/npr) + 1;
       if (i!=0 && i!=npr-1) NROW_loc[i]+=1;
       tam[i] = NROW_loc[i]*NCOL; //En el Scatterv no se puede hacer porque es un array
       if (i == 0) dis[i] = 0;
@@ -134,7 +137,10 @@ int main (int argc, char *argv[])
       }
     }
 
-    trozo = trozo_chips = trozo_aux = malloc(tam[pid]*NCOL*sizeof(float));
+    trozo = malloc(tam[pid]*NCOL*sizeof(float));
+    trozo_chips = malloc(tam[pid]*NCOL*sizeof(float));
+    trozo_aux = malloc(tam[pid]*NCOL*sizeof(float));
+
     for (i=0; i< tam[pid]* NCOL; i++){
       trozo[i] = trozo_aux[i] = param.t_ext;
     } 
@@ -143,27 +149,27 @@ int main (int argc, char *argv[])
 
 
     // main loop: thermal injection/disipation until convergence (t_delta or max_iter)
-    Tmean = calculate_Tmean (param, trozo, trozo_chips, trozo_aux, NROW_loc);
+    // Tmean = calculate_Tmean (param, trozo, trozo_chips, trozo_aux, NROW_loc);
     if (pid==0) printf ("  Config: %2d    Tmean: %1.2f\n", conf + 1, Tmean);
 
-    //Transformamos tamaños y distancias para recibir
-    for (i=0;i<npr;i++){
-      if (i==0){
-        tam[i] = tam[i]-NCOL;
-      }
-      else if (i==npr){
-        tam[i] = tam[i]-NCOL;
-        dis[i] = dis[i-1]-NCOL;
-      }
-      else{
-        tam[i] = tam[i]-(2*NCOL);
-        dis[i]= dis[i-1] + tam[i-1];
-      }
-    }
+    // //Transformamos tamaños y distancias para recibir
+    // for (i=0;i<npr;i++){
+    //   if (i==0){
+    //     tam[i] = tam[i]-NCOL;
+    //   }
+    //   else if (i==npr){
+    //     tam[i] = tam[i]-NCOL;
+    //     dis[i] = dis[i-1]-NCOL;
+    //   }
+    //   else{
+    //     tam[i] = tam[i]-(2*NCOL);
+    //     dis[i]= dis[i-1] + tam[i-1];
+    //   }
+    // }
 
     //Recibimos cada trozo a grid y grid_chips
-    MPI_Gatherv(trozo, tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    MPI_Gatherv(trozo_chips, tam[pid], MPI_FLOAT, grid_chips, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    // MPI_Gatherv(trozo, tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    // MPI_Gatherv(trozo_chips, tam[pid], MPI_FLOAT, grid_chips, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
     // processing configuration results 
     if (pid==0) results_conf (conf, Tmean, param, grid, grid_chips, &BT);
