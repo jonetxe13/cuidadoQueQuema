@@ -167,10 +167,10 @@ int main (int argc, char *argv[])
         dis[i]= dis[i-1] + tam[i-1];
       }
     }
-
+    int indicePrimeraFila = NCOL;
     //Recibimos cada trozo a grid y grid_chips
-    MPI_Gatherv(trozo, tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    MPI_Gatherv(trozo_chips, tam[pid], MPI_FLOAT, grid_chips, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Gatherv(&trozo[indicePrimeraFila], tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Gatherv(&trozo_chips[indicePrimeraFila], tam[pid], MPI_FLOAT, grid_chips, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
     // processing configuration results 
     if (pid==0) results_conf (conf, Tmean, param, grid, grid_chips, &BT);
