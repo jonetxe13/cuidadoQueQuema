@@ -25,8 +25,8 @@
 #include <mpi.h>
 
 #include "defines.h"
-#include "faux_s.h"
-#include "diffusion_s.h"
+#include "faux_p.h"
+#include "diffusion_p.h"
 
 
 
@@ -96,7 +96,7 @@ int main (int argc, char *argv[])
   read_data (argv[1], &param, &chips, &chip_coord);
 
   //Numero de filas a repartir
-  int N = param.scale * 100;
+  //int N = param.scale * 100;
 
   printf ("\n  ===================================================================");
   printf ("\n    Thermal diffusion - SERIAL version ");
@@ -136,7 +136,7 @@ int main (int argc, char *argv[])
 
     trozo = trozo_chips = trozo_aux = malloc(tam[pid]*NCOL*sizeof(float));
     for (i=0; i< tam[pid]* NCOL; i++){
-      trozo = trozo_aux = param.t_ext;
+      trozo[i] = trozo_aux[i] = param.t_ext;
     } 
 
     MPI_Scatterv(grid_chips, tam, dis, MPI_FLOAT, trozo_chips, tam[pid], MPI_FLOAT, 0, MPI_COMM_WORLD);
@@ -170,12 +170,12 @@ int main (int argc, char *argv[])
   }
 
   if (pid==0){
-  clock_gettime (CLOCK_REALTIME, &t1);
-  tej = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec)/(double)1e9;
-  printf ("\n\n >>> Best configuration: %2d    Tmean: %1.2f\n", BT.conf + 1, BT.Tmean); 
-  printf ("   > Time (serial): %1.3f s \n\n", tej);
-  // writing best configuration results
-  results (param, &BT, argv[1]);
+    clock_gettime (CLOCK_REALTIME, &t1);
+    tej = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec)/(double)1e9;
+    printf ("\n\n >>> Best configuration: %2d    Tmean: %1.2f\n", BT.conf + 1, BT.Tmean); 
+    printf ("   > Time (serial): %1.3f s \n\n", tej);
+    // writing best configuration results
+    results (param, &BT, argv[1]);
   }
 
   free (grid);free (grid_chips);free (grid_aux);

@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <values.h>
+#include <mpi.h>
 
 #include "defines.h"
 
@@ -99,7 +100,7 @@ void results (struct info_param param, struct info_results *BT, char *finput)
 
   printf ("\n\n >>> BEST CONFIGURATION: %2d\t Tmean: %1.2f\n\n", BT->conf+1, BT->Tmean); 
 
-  sprintf (name, "%s_ser.res", finput);
+  sprintf (name, "%s_par.res", finput);
   fd = fopen (name, "w");
   fprintf (fd, "Tmin_ini %1.1f  Tmax_ini %1.1f  \n", param.t_ext, param.tmax_chip);
   fprintf (fd, "%d\t  %d \n", NCOL-2, NROW-2);
@@ -109,7 +110,7 @@ void results (struct info_param param, struct info_results *BT, char *finput)
   fprintf (fd, "\n\n >>> BEST CONFIGURATION: %d\t Tmean: %1.2f\n\n", BT->conf+1, BT->Tmean);
   fclose (fd);
 
-  sprintf (name, "%s_ser.chips", finput);
+  sprintf (name, "%s_par.chips", finput);
   fd = fopen (name, "w");
   fprintf (fd, "Tmin_chip %1.1f  Tmax_chip %1.1f  \n", param.t_ext, param.tmax_chip);
   fprintf (fd, "%d\t  %d \n", NCOL-2, NROW-2);

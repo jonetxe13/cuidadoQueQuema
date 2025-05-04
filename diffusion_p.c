@@ -1,5 +1,6 @@
 /* File: diffusion_s.c */ 
 
+#include <mpi.h>
 #include "defines.h"
 
 extern int pid;
@@ -51,7 +52,7 @@ double thermal_diffusion (struct info_param param, float *grid, float *grid_aux,
   }
 
   if (pid!=npr-1){
-    MPI_SSend(&grid[(NROW_loc-2)*NCOL+1], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
+    MPI_Ssend(&grid[(NROW_loc-2)*NCOL+1], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
   }
 
   //new values for the grid
