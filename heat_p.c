@@ -158,7 +158,7 @@ int main (int argc, char *argv[])
       if (i==0){
         tam[i] = tam[i]-NCOL;
       }
-      else if (i==npr){
+      else if (i==npr-1){
         tam[i] = tam[i]-NCOL;
         dis[i] = dis[i-1]-NCOL;
       }
