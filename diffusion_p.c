@@ -35,10 +35,6 @@ double thermal_diffusion (struct info_param param, float *grid, float *grid_aux,
   double  T;
   double Tfull = 0.0;
 
-  if (pid!=0){
-    MPI_Recv(grid, NCOL, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
-  }
-
   for (i=1; i<NROW_loc[pid]-1; i++)
   {
     for (j=1; j<NCOL-1; j++)
@@ -51,10 +47,6 @@ double thermal_diffusion (struct info_param param, float *grid, float *grid_aux,
       grid_aux[i*NCOL+j] = T;
       Tfull += T;
     }
-  }
-
-  if (pid!=npr-1){
-    MPI_Ssend(&grid[(NROW_loc[pid]-2)*NCOL+1], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
   }
 
   //new values for the grid
@@ -82,6 +74,21 @@ double calculate_Tmean (struct info_param param, float *grid, float *grid_chips,
 
     // heat injection and air cooling 
     thermal_update (param, grid, grid_chips, NROW_loc);
+
+    if (pid==0){
+      MPI_Ssend(&grid[(NROW_loc[pid]*NCOL)-2*NCOL], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
+      MPI_Recv(&grid[(NROW_loc[pid]*NCOL)-NCOL], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
+    }
+    else if(pid == npr-1){
+      MPI_Recv(&grid[0], NCOL, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
+      MPI_Ssend(&grid[NCOL], NCOL, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
+    }
+    else{
+      MPI_Recv(&grid[0], NCOL, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
+      MPI_Ssend(&grid[NCOL], NCOL, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
+      MPI_Ssend(&grid[(NROW_loc[pid]*NCOL)-2*NCOL], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
+      MPI_Recv(&grid[(NROW_loc[pid]*NCOL)-NCOL], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
+    }
 
     // thermal diffusion
     Tfull = thermal_diffusion(param, grid, grid_aux, NROW_loc);
