@@ -138,11 +138,11 @@ int main (int argc, char *argv[])
       }
     }
 
-    trozo = malloc(tam[pid]*NCOL*sizeof(float));
-    trozo_chips = malloc(tam[pid]*NCOL*sizeof(float));
-    trozo_aux = malloc(tam[pid]*NCOL*sizeof(float));
+    trozo = malloc(tam[pid]*sizeof(float));
+    trozo_chips = malloc(tam[pid]*sizeof(float));
+    trozo_aux = malloc(tam[pid]*sizeof(float));
 
-    for (i=0; i< tam[pid]* NCOL; i++){
+    for (i=0; i< tam[pid]; i++){
       trozo[i] = trozo_aux[i] = param.t_ext;
     } 
 
