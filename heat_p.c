@@ -134,7 +134,7 @@ int main (int argc, char *argv[])
       tam[i] = NROW_loc[i]*NCOL; //En el Scatterv no se puede hacer porque es un array
       if (i == 0) dis[i] = 0;
       else{
-        dis[i] = dis[i-1] + tam[i-1] - NCOL;
+        dis[i] = dis[i-1] + tam[i-1] - 2*NCOL;
       }
     }
 
