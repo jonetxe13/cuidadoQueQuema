@@ -146,6 +146,7 @@ int main (int argc, char *argv[])
       trozo[i] = trozo_aux[i] = param.t_ext;
     } 
 
+    MPI_Scatterv(grid, tam, dis, MPI_FLOAT, trozo, tam[pid], MPI_FLOAT, 0, MPI_COMM_WORLD);
     MPI_Scatterv(grid_chips, tam, dis, MPI_FLOAT, trozo_chips, tam[pid], MPI_FLOAT, 0, MPI_COMM_WORLD);
 
 
@@ -154,20 +155,17 @@ int main (int argc, char *argv[])
     if (pid==0) printf ("  Config: %2d    Tmean: %1.2f\n", conf + 1, Tmean);
 
     // //Transformamos tamaños y distancias para recibir
+    dis[0] = 0;
     for (i=0;i<npr;i++){
-      if (i==0){
+      if (i==0 || i==npr-1){
         tam[i] = tam[i]-NCOL;
-      }
-      else if (i==npr-1){
-        tam[i] = tam[i]-NCOL;
-        dis[i] = dis[i-1]-NCOL;
       }
       else{
         tam[i] = tam[i]-(2*NCOL);
-        dis[i]= dis[i-1] + tam[i-1];
       }
+      if(i > 0) dis[i]= dis[i-1] + tam[i-1];
     }
-    int indicePrimeraFila = NCOL;
+    int indicePrimeraFila = (pid == 0) ? 0 : NCOL;
     //Recibimos cada trozo a grid y grid_chips
     MPI_Gatherv(&trozo[indicePrimeraFila], tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
     MPI_Gatherv(&trozo_chips[indicePrimeraFila], tam[pid], MPI_FLOAT, grid_chips, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
