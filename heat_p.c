@@ -128,14 +128,36 @@ int main (int argc, char *argv[])
     }
 
     //Repartimos las filas
+    /*
     for (i=0; i<npr;i++){
-      NROW_loc[i]= (i+1)*(NROW/npr) - (i*NROW/npr) + 1;
+      NROW_loc[i]= (i+1)*((NROW-2)/npr) - (i*(NROW-2)/npr) + 1;
       if (i!=0 && i!=npr-1) NROW_loc[i]+=1;
       tam[i] = NROW_loc[i]*NCOL; //En el Scatterv no se puede hacer porque es un array
       if (i == 0) dis[i] = 0;
       else{
         dis[i] = dis[i-1] + tam[i-1] - 2*NCOL;
       }
+    }
+    */
+    
+    int resto = (NROW-2) % npr;
+    int cociente = (NROW-2) / npr;
+    for (i=0; i<npr; i++){
+      NROW_loc[i] = cociente;
+      if (i<resto) NROW_loc[i]++;
+      //if (i == 0 || i == npr-1) NROW_loc[i]++;
+      //else NROW_loc[i] = NROW_loc[i] + 2;
+      NROW_loc[i] = NROW_loc[i] + 2;
+      tam[i] = NROW_loc[i] * NCOL;
+      if (i==0) dis[i] = 0;
+      else dis[i] = dis[i-1] + tam[i-1];
+    }
+
+
+    if (pid == 0){
+      printf("\nTamaños antes de enviar:\n");
+      printf("Filas reales: %d\n", NROW-2);
+      for (i=0; i< npr; i++) printf("Pid: %d NROW_loc: %d Tam: %d Dis: %d\n", i, NROW_loc[i], tam[i], dis[i]);
     }
 
     trozo = malloc(tam[pid]*sizeof(float));
@@ -146,12 +168,12 @@ int main (int argc, char *argv[])
       trozo[i] = trozo_aux[i] = param.t_ext;
     } 
 
-    MPI_Scatterv(grid, tam, dis, MPI_FLOAT, trozo, tam[pid], MPI_FLOAT, 0, MPI_COMM_WORLD);
+    //MPI_Scatterv(grid, tam, dis, MPI_FLOAT, trozo, tam[pid], MPI_FLOAT, 0, MPI_COMM_WORLD);
     MPI_Scatterv(grid_chips, tam, dis, MPI_FLOAT, trozo_chips, tam[pid], MPI_FLOAT, 0, MPI_COMM_WORLD);
 
 
     // main loop: thermal injection/disipation until convergence (t_delta or max_iter)
-    Tmean = calculate_Tmean (param, trozo, trozo_chips, trozo_aux, NROW_loc);
+    Tmean = calculate_Tmean (param, trozo, trozo_chips, trozo_aux, NROW_loc[pid]);
     if (pid==0) printf ("  Config: %2d    Tmean: %1.2f\n", conf + 1, Tmean);
 
     // //Transformamos tamaños y distancias para recibir
@@ -165,7 +187,17 @@ int main (int argc, char *argv[])
       }
       if(i > 0) dis[i]= dis[i-1] + tam[i-1];
     }
-    int indicePrimeraFila = (pid == 0) ? 0 : NCOL;
+
+    if (pid == 0) printf("\nTamaños antes de enviar:\n");
+    if (pid == 0) for (i=0; i< npr; i++) printf("Pid: %d Tam: %d Dis: %d\n", i, tam[i], dis[i]);
+
+    //int indicePrimeraFila = (pid == 0) ? 0 : NCOL;
+    int indicePrimeraFila;
+    if (pid == 0)
+      indicePrimeraFila = 0;
+    else
+      indicePrimeraFila = NCOL;
+
     //Recibimos cada trozo a grid y grid_chips
     MPI_Gatherv(&trozo[indicePrimeraFila], tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
     MPI_Gatherv(&trozo_chips[indicePrimeraFila], tam[pid], MPI_FLOAT, grid_chips, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
