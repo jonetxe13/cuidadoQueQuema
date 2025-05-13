@@ -68,34 +68,19 @@ double calculate_Tmean (float *grid, float *grid_chips, float *grid_aux, float t
     // heat injection and air cooling 
     thermal_update (grid, grid_chips, t_ext, NROW_loc, NCOL_glob);
 
-    /*
     if (pid==0){
-      MPI_Ssend(&grid[NROW_loc*NCOL], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
-      MPI_Recv(&grid[(NROW_loc+1)*NCOL], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
+      MPI_Ssend(&grid[NROW_loc*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
+      MPI_Recv(&grid[(NROW_loc+1)*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
     }
     else if(pid == npr-1){
-      MPI_Recv(&grid[0], NCOL, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
-      MPI_Ssend(&grid[NCOL], NCOL, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
+      MPI_Recv(&grid[0], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
+      MPI_Ssend(&grid[NCOL_glob], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
     }
     else{
-      MPI_Recv(&grid[0], NCOL, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
-      MPI_Ssend(&grid[NCOL], NCOL, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
-      MPI_Ssend(&grid[NROW_loc*NCOL], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
-      MPI_Recv(&grid[(NROW_loc+1)*NCOL], NCOL, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
-    }
-    */
-
-
-  if (pid % 2 == 0){
-      if (pid != 0)     MPI_Ssend(&grid[NCOL_glob],NCOL_glob,MPI_FLOAT,pid-1,0,MPI_COMM_WORLD);
-      if (pid != npr-1) MPI_Ssend(&grid[NROW_loc*NCOL_glob],NCOL_glob,MPI_FLOAT,pid+1,0,MPI_COMM_WORLD);
-      if (pid != 0)     MPI_Recv(&grid[0],NCOL_glob,MPI_FLOAT,pid-1,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-      if (pid != npr-1) MPI_Recv(&grid[(NROW_loc + 1) * NCOL_glob],NCOL_glob,MPI_FLOAT,pid+1,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-    } else {
-      if (pid != 0)     MPI_Recv(&grid[0],NCOL_glob,MPI_FLOAT,pid-1,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-      if (pid != npr-1) MPI_Recv(&grid[(NROW_loc + 1) * NCOL_glob],NCOL_glob,MPI_FLOAT,pid+1,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-      if (pid != 0)     MPI_Ssend(&grid[NCOL_glob],NCOL_glob,MPI_FLOAT,pid-1,0,MPI_COMM_WORLD);
-      if (pid != npr-1) MPI_Ssend(&grid[NROW_loc*NCOL_glob],NCOL_glob,MPI_FLOAT,pid+1,0,MPI_COMM_WORLD);
+      MPI_Recv(&grid[0], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
+      MPI_Ssend(&grid[NCOL_glob], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
+      MPI_Ssend(&grid[NROW_loc*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD); //cada pid le envía su última fila(real) al siguiente pid
+      MPI_Recv(&grid[(NROW_loc+1)*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); //Todos los pid menos el 0 esperan a recibir la última fila del anterior pid para poder hacer los cálculos
     }
 
  
