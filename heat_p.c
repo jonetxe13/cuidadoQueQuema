@@ -5,12 +5,12 @@
      Se analizan las posiciones de los chips en una tarjeta, para conseguir la temperatura minima
      de la tarjeta. Se utiliza el metodo de tipo Poisson, y la tarjeta se discretiza en una rejilla 
      de puntos 2D.
-     
+
      Entrada: card > la definicion de la tarjeta y las configuraciones a simular
      Salida: la mejor configuracion y la temperatura media
-	      card_s.chips: situacion termica inicial
+        card_s.chips: situacion termica inicial
         card_s.res: la situacion termica final
- 
+
      defines.h: definiciones de ciertas variables y estructuras de datos
 
      Compilar con estos dos ficheros: 
@@ -36,27 +36,25 @@ void init_grid_chips (int conf, struct info_param param, struct info_chips *chip
   int i, j, n;
 
   for (i=0; i<NROW; i++)
-  for (j=0; j<NCOL; j++)  
-    grid_chips[i*NCOL+j] = param.t_ext;
+    for (j=0; j<NCOL; j++)  
+      grid_chips[i*NCOL+j] = param.t_ext;
 
   for (n=0; n<param.nchip; n++)
-  for (i = chip_coord[conf][2*n]   * param.scale; i < (chip_coord[conf][2*n] + chips[n].h) * param.scale; i++)
-  for (j = chip_coord[conf][2*n+1] * param.scale; j < (chip_coord[conf][2*n+1]+chips[n].w) * param.scale; j++) 
-    grid_chips[(i+1)*NCOL+(j+1)] = chips[n].tchip;
+    for (i = chip_coord[conf][2*n]   * param.scale; i < (chip_coord[conf][2*n] + chips[n].h) * param.scale; i++)
+      for (j = chip_coord[conf][2*n+1] * param.scale; j < (chip_coord[conf][2*n+1]+chips[n].w) * param.scale; j++) 
+        grid_chips[(i+1)*NCOL+(j+1)] = chips[n].tchip;
 }
 
 /************************************************************************************/
-void init_grids (struct info_param param, float *grid, float *grid_aux)
+void init_grids (float t_ext, float *grid, float *grid_aux, int NROW_glob, int NCOL_glob)
 {
   int i, j;
 
-  for (i=0; i<NROW; i++)
-  for (j=0; j<NCOL; j++) 
-    grid[i*NCOL+j] = grid_aux[i*NCOL+j] = param.t_ext;
+  for (i=0; i<NROW_glob; i++)
+    for (j=0; j<NCOL_glob; j++) 
+      grid[i*NCOL_glob+j] = grid_aux[i*NCOL_glob+j] = t_ext;
 }
 
-//Declaradas fuera para que se puedan acceder desde las funciones
-int pid, npr;
 
 /************************************************************************************/
 /************************************************************************************/
@@ -65,161 +63,164 @@ int main (int argc, char *argv[])
   struct info_param param;
   struct info_chips *chips;
   int	 **chip_coord;
+  int pid, npr;
 
-  float *grid, *grid_chips, *grid_aux;  
+  float *grid, *grid_chips;  
   struct info_results BT;
-  
+
   int    conf, i, j, k;
-  struct timespec t0, t1;
-  double tej, Tmean;
+  double tej, Tmean, t0, t1;
 
   //Arrays para el reparto de filas
   int N;
-  int *tam, *dis, *NROW_loc;
+  int *tam, *dis, *tam_marcos, *dis_marcos;
+
+  char *pack_read_data;
+  int pack_size, pos, max_iter, scale, nconf;
+  float t_delta, t_ext;
+
   //Para que cada proceso reciba sus trozos en el scatterv
   float *trozo, *trozo_chips, *trozo_aux;
+
+  int NROW_glob, NCOL_glob;
 
 
   MPI_Init (&argc, &argv);
   MPI_Comm_rank (MPI_COMM_WORLD, &pid);
   MPI_Comm_size (MPI_COMM_WORLD, &npr);
 
-
-  tam = malloc(npr * sizeof(int));
-  dis = malloc(npr * sizeof(int));
-  NROW_loc = malloc(npr * sizeof(int));
-
- // reading initial data file
+  // reading initial data file
   if (argc != 2) {
     printf ("\n\nERROR: needs a card description file \n\n");
     exit (-1);
   } 
 
-  read_data (argv[1], &param, &chips, &chip_coord);
 
-  //Numero de filas a repartir
-  //int N = param.scale * 100;
+  MPI_Pack_size(5,MPI_INT,MPI_COMM_WORLD,&pack_size);
+  pack_read_data = (char*) malloc (pack_size*sizeof(char));
+  pos = 0;
+
+  if (pid == 0) 
+  {
+    read_data (argv[1], &param, &chips, &chip_coord);
+    MPI_Pack(&param.nconf,    1,MPI_INT,pack_read_data,pack_size,&pos,MPI_COMM_WORLD);
+    MPI_Pack(&param.max_iter, 1,MPI_INT,pack_read_data,pack_size,&pos,MPI_COMM_WORLD);
+    MPI_Pack(&param.t_ext,    1,MPI_INT,pack_read_data,pack_size,&pos,MPI_COMM_WORLD);
+    MPI_Pack(&param.t_delta,  1,MPI_INT,pack_read_data,pack_size,&pos,MPI_COMM_WORLD);
+    MPI_Pack(&param.scale,    1,MPI_INT,pack_read_data,pack_size,&pos,MPI_COMM_WORLD);
+    nconf = param.nconf; max_iter = param.max_iter; t_ext = param.t_ext; t_delta = param.t_delta; scale = param.scale;
+  }
+
+  MPI_Bcast(pack_read_data,pack_size,MPI_PACKED,0,MPI_COMM_WORLD);
+
+  if (pid != 0)
+  {
+    MPI_Unpack(pack_read_data,pack_size,&pos,&nconf,1,MPI_INT,MPI_COMM_WORLD);
+    MPI_Unpack(pack_read_data,pack_size,&pos,&max_iter,1,MPI_INT,MPI_COMM_WORLD);
+    MPI_Unpack(pack_read_data,pack_size,&pos,&t_ext,1,MPI_INT,MPI_COMM_WORLD);
+    MPI_Unpack(pack_read_data,pack_size,&pos,&t_delta,1,MPI_INT,MPI_COMM_WORLD);
+    MPI_Unpack(pack_read_data,pack_size,&pos,&scale,1,MPI_INT,MPI_COMM_WORLD);
+  }
+
+
+  NROW_glob = (200*scale + 2);  // extended row number
+  NCOL_glob = (100*scale + 2);  // extended column number
+
+
   if(pid==0){
     printf ("\n  ===================================================================");
     printf ("\n    Thermal diffusion - PAR version ");
     printf ("\n    %d x %d points, %d chips", RSIZE*param.scale, CSIZE*param.scale, param.nchip);
     printf ("\n    T_ext = %1.1f, Tmax_chip = %1.1f, T_delta: %1.3f, Max_iter: %d", param.t_ext, param.tmax_chip, param.t_delta, param.max_iter);
     printf ("\n  ===================================================================\n\n");
+    t0 = MPI_Wtime();
   }
-  
-  if (pid==0) clock_gettime (CLOCK_REALTIME, &t0);
-
-  grid = malloc(NROW*NCOL * sizeof(float));
-  grid_chips = malloc(NROW*NCOL * sizeof(float));
-  grid_aux = malloc(NROW*NCOL * sizeof(float));
-
-  BT.bgrid = malloc(NROW*NCOL * sizeof(float));
-  BT.cgrid = malloc(NROW*NCOL * sizeof(float));
-  BT.Tmean = MAXDOUBLE;
-
-  // loop to process chip configurations
-  for (conf=0; conf<param.nconf; conf++)
-  {
-    // printf("holaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-    if (pid == 0){
-      // inintial values for grids
-      init_grid_chips (conf, param, chips, chip_coord, grid_chips);
-      init_grids (param, grid, grid_aux);
-    }
-
-    //Repartimos las filas
-    /*
-    for (i=0; i<npr;i++){
-      NROW_loc[i]= (i+1)*((NROW-2)/npr) - (i*(NROW-2)/npr) + 1;
-      if (i!=0 && i!=npr-1) NROW_loc[i]+=1;
-      tam[i] = NROW_loc[i]*NCOL; //En el Scatterv no se puede hacer porque es un array
-      if (i == 0) dis[i] = 0;
-      else{
-        dis[i] = dis[i-1] + tam[i-1] - 2*NCOL;
-      }
-    }
-    */
-    
-    int resto = (NROW-2) % npr;
-    int cociente = (NROW-2) / npr;
-    for (i=0; i<npr; i++){
-      NROW_loc[i] = cociente;
-      if (i<resto) NROW_loc[i]++;
-      //if (i == 0 || i == npr-1) NROW_loc[i]++;
-      //else NROW_loc[i] = NROW_loc[i] + 2;
-      NROW_loc[i] = NROW_loc[i] + 2;
-      tam[i] = NROW_loc[i] * NCOL;
-      if (i==0) dis[i] = 0;
-      else dis[i] = dis[i-1] + tam[i-1];
-    }
 
 
-    if (pid == 0){
-      printf("\nTamaños antes de enviar:\n");
-      printf("Filas reales: %d\n", NROW-2);
-      for (i=0; i< npr; i++) printf("Pid: %d NROW_loc: %d Tam: %d Dis: %d\n", i, NROW_loc[i], tam[i], dis[i]);
-    }
-
-    trozo = malloc(tam[pid]*sizeof(float));
-    trozo_chips = malloc(tam[pid]*sizeof(float));
-    trozo_aux = malloc(tam[pid]*sizeof(float));
-
-    for (i=0; i< tam[pid]; i++){
-      trozo[i] = trozo_aux[i] = param.t_ext;
-    } 
-
-    //MPI_Scatterv(grid, tam, dis, MPI_FLOAT, trozo, tam[pid], MPI_FLOAT, 0, MPI_COMM_WORLD);
-    MPI_Scatterv(grid_chips, tam, dis, MPI_FLOAT, trozo_chips, tam[pid], MPI_FLOAT, 0, MPI_COMM_WORLD);
+  tam = (int*) malloc(npr * sizeof(int));
+  dis = (int*) malloc(npr * sizeof(int));
+  tam_marcos = (int*) malloc(npr * sizeof(int));
+  dis_marcos = (int*) malloc(npr * sizeof(int));
 
 
-    // main loop: thermal injection/disipation until convergence (t_delta or max_iter)
-    Tmean = calculate_Tmean (param, trozo, trozo_chips, trozo_aux, NROW_loc[pid]);
-    if (pid==0) printf ("  Config: %2d    Tmean: %1.2f\n", conf + 1, Tmean);
 
-    // //Transformamos tamaños y distancias para recibir
-    dis[0] = 0;
-    for (i=0;i<npr;i++){
-      if (i==0 || i==npr-1){
-        tam[i] = tam[i]-NCOL;
-      }
-      else{
-        tam[i] = tam[i]-(2*NCOL);
-      }
-      if(i > 0) dis[i]= dis[i-1] + tam[i-1];
-    }
+  int resto = (NROW_glob-2) % npr;
+  int cociente = (NROW_glob-2) / npr;
 
-    if (pid == 0) printf("\nTamaños antes de enviar:\n");
-    if (pid == 0) for (i=0; i< npr; i++) printf("Pid: %d Tam: %d Dis: %d\n", i, tam[i], dis[i]);
-
-    //int indicePrimeraFila = (pid == 0) ? 0 : NCOL;
-    int indicePrimeraFila;
-    if (pid == 0)
-      indicePrimeraFila = 0;
-    else
-      indicePrimeraFila = NCOL;
-
-    //Recibimos cada trozo a grid y grid_chips
-    MPI_Gatherv(&trozo[indicePrimeraFila], tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    MPI_Gatherv(&trozo_chips[indicePrimeraFila], tam[pid], MPI_FLOAT, grid_chips, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
-    // processing configuration results 
-    if (pid==0) results_conf (conf, Tmean, param, grid, grid_chips, &BT);
+  for (i=0; i<npr; i++){
+    tam[i] = cociente;
+    if (i<resto) tam[i]++;
+    tam_marcos[i] = tam[i] + 2;
+    tam[i] *= NCOL_glob;
+    tam_marcos[i] *= NCOL_glob;
+    if (i==0) dis[i] = NCOL_glob;
+    else dis[i] = dis[i-1] + tam[i-1];
+    dis_marcos[i] = dis[i] - NCOL_glob;
   }
 
   if (pid==0){
-    clock_gettime (CLOCK_REALTIME, &t1);
-    tej = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec)/(double)1e9;
+    grid = malloc(NROW_glob*NCOL_glob * sizeof(float));
+    grid_chips = malloc(NROW_glob*NCOL_glob * sizeof(float));
+
+    BT.bgrid = malloc(NROW_glob*NCOL_glob * sizeof(float));
+    BT.cgrid = malloc(NROW_glob*NCOL_glob * sizeof(float));
+    BT.Tmean = MAXDOUBLE;
+  }
+
+
+  trozo = (float*) malloc(tam_marcos[pid]*sizeof(float));
+  trozo_chips = (float*) malloc(tam_marcos[pid]*sizeof(float));
+  trozo_aux = (float*) malloc(tam_marcos[pid]*sizeof(float));
+
+
+
+  // loop to process chip configurations
+  for (conf=0; conf<nconf; conf++)
+  {
+
+    if (pid == 0){
+      // inintial values for grids
+      init_grid_chips (conf, param, chips, chip_coord, grid_chips);
+    }
+    MPI_Scatterv(&grid_chips[NCOL_glob], tam, dis_marcos, MPI_FLOAT, &trozo_chips[NCOL_glob], tam[pid], MPI_FLOAT, 0, MPI_COMM_WORLD);
+
+    init_grids (t_ext, trozo, trozo_aux, tam_marcos[pid]/NCOL_glob, NCOL_glob);
+
+    // main loop: thermal injection/disipation until convergence (t_delta or max_iter)
+    Tmean = calculate_Tmean (trozo, trozo_chips, trozo_aux, t_delta, max_iter, t_ext, tam[pid]/NCOL_glob, NROW_glob, NCOL_glob, pid, npr);
+
+
+    //Recibimos cada trozo a grid y grid_chips
+    MPI_Gatherv(&trozo[NCOL_glob], tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
+
+
+    if (pid==0) {
+      printf ("  Config: %2d    Tmean: %1.2f\n", conf + 1, Tmean);
+    // processing configuration results 
+      results_conf (conf, Tmean, param, grid, grid_chips, &BT);
+    }
+  }
+
+  if (pid==0){
+    t1 = MPI_Wtime();
+    tej = t1-t0;
     printf ("\n\n >>> Best configuration: %2d    Tmean: %1.2f\n", BT.conf + 1, BT.Tmean); 
     printf ("   > Time (par): %1.3f s \n\n", tej);
     // writing best configuration results
     results (param, &BT, argv[1]);
   }
 
-  free (grid);free (grid_chips);free (grid_aux);
-  free (BT.bgrid);free (BT.cgrid);
-  free (chips);
-  for (i=0; i<param.nconf; i++) free (chip_coord[i]);
-  free (chip_coord);
+  if (pid==0){
+    free (grid);free (grid_chips);
+    free (BT.bgrid);free (BT.cgrid);
+    free (chips);
+    for (i=0; i<param.nconf; i++) free (chip_coord[i]);
+    free (chip_coord);
+  }
+
+  free(trozo); free(trozo_chips); free(trozo_aux);
+  free(tam); free(dis); free(tam_marcos); free(dis_marcos);
+  free(pack_read_data);
 
   MPI_Finalize ();
   return (0);
