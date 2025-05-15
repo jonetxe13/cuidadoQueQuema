@@ -119,12 +119,21 @@ double calculate_Tmean (float *grid, float *grid_chips, float *grid_aux, float t
     // heat injection and air cooling 
     thermal_update (grid, grid_chips, t_ext, NROW_loc, NCOL_glob);
 
-    if (pid != 0) MPI_Isend(&grid[NCOL_glob], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, &envio_ant); //Cada proceso envia su primera fila útil al anterior
-    if (pid != npr-1) MPI_Isend(&grid[NROW_loc*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, &envio_sig); //Cada proceso envia su última fila útil al siguiente
 
-
-    if (pid != 0) MPI_Irecv(&grid[0], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD,&recv_ant); //Cada proceso recibe el marco de arriba del proceso anterior
-    if (pid != npr-1) MPI_Irecv(&grid[(NROW_loc+1)*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, &recv_sig); //Cada proceso recibe el marco de abajo del proceso siguiente
+    if (pid==0){
+      MPI_Isend(&grid[NROW_loc*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, &envio_sig); //El proceso 0 envia su última fila útil al siguiente
+      MPI_Irecv(&grid[(NROW_loc+1)*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, &recv_sig); //El proceso 0 recibe el marco de abajo del proceso siguiente
+    }
+    else if(pid == npr-1){
+      MPI_Irecv(&grid[0], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD,&recv_ant); //El último proceso recibe el marco de arriba del proceso anterior
+      MPI_Isend(&grid[NCOL_glob], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD,&envio_ant); //El último proceso envia su primera fila útil al anterior
+    }
+    else{
+      MPI_Irecv(&grid[0], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, &recv_ant); //Cada proceso recibe el marco de arriba del proceso anterior
+      MPI_Isend(&grid[NCOL_glob], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, &envio_ant); //Cada proceso envia su primera fila útil al anterior
+      MPI_Isend(&grid[NROW_loc*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, &envio_sig); //Cada proceso envia su última fila útil al siguiente
+      MPI_Irecv(&grid[(NROW_loc+1)*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, &recv_sig);//Cada proceso recibe el marco de abajo del proceso siguiente
+    }
 
     // thermal diffusion
     Tfull = thermal_diffusion(grid, grid_aux, NROW_loc, NCOL_glob, envio_ant, envio_sig, recv_ant, recv_sig);

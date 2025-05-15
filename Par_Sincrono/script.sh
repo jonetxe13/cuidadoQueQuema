@@ -2,7 +2,7 @@
 
 mpicc -o heat_pSinc heat_pSinc.c diffusion_pSinc.c faux_pSinc.c
 
-touch ../Resultados/resultados-totales-sinc.txt
+echo "" >../Resultados/resultados-totales-sinc.txt
 
 echo "2 nodo" >>../Resultados/resultados-totales-sinc.txt
 mpirun -mca btl openib,vader,self,tcp -mca mpi_cuda_support 0 -hostfile /export/home/nodos/hostfinal -map-by node -bind-to none -n 2 heat_pAsinc ../Cards/card >>../Resultados/resultados-totales-sinc.txt
