@@ -3266,3 +3266,17 @@ Iter (par): 2140	  Config: 20    Tmean: 47.64
 
  >>> BEST CONFIGURATION:  8	 Tmean: 47.21
 
+2 nodo
+
+  ===================================================================
+    Thermal diffusion - PAR version 
+    2400 x 1200 points, 4 chips
+    T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
+  ===================================================================
+
+Iter (par): 2940	  Config:  1    Tmean: 49.43
+Iter (par): 3180	  Config:  2    Tmean: 50.59
+Iter (par): 3530	  Config:  3    Tmean: 50.79
+Iter (par): 3560	  Config:  4    Tmean: 50.44
+Iter (par): 3670	  Config:  5    Tmean: 51.35
+Iter (par): 3710	  Config:  6    Tmean: 51.67
