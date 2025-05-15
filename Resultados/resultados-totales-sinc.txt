@@ -1,0 +1,18 @@
+2 nodo
+2 total processes failed to start
+4 nodo
+4 total processes failed to start
+8 nodo
+8 total processes failed to start
+12 nodo
+12 total processes failed to start
+16 nodo
+16 total processes failed to start
+20 nodo
+20 total processes failed to start
+24 nodo
+24 total processes failed to start
+32 nodo
+32 total processes failed to start
+48 nodo
+48 total processes failed to start

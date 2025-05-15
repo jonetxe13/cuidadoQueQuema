@@ -3229,3 +3229,40 @@ try again.
     T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
   ===================================================================
 
+2 nodo
+
+  ===================================================================
+    Thermal diffusion - PAR version 
+    2400 x 1200 points, 4 chips
+    T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
+  ===================================================================
+
+Iter (par): 2940	  Config:  1    Tmean: 49.43
+Iter (par): 3180	  Config:  2    Tmean: 50.59
+Iter (par): 3530	  Config:  3    Tmean: 50.79
+Iter (par): 3560	  Config:  4    Tmean: 50.44
+Iter (par): 3670	  Config:  5    Tmean: 51.35
+Iter (par): 3710	  Config:  6    Tmean: 51.67
+Iter (par): 2530	  Config:  7    Tmean: 49.22
+Iter (par): 2220	  Config:  8    Tmean: 47.21
+Iter (par): 2770	  Config:  9    Tmean: 49.52
+Iter (par): 3400	  Config: 10    Tmean: 51.08
+Iter (par): 3160	  Config: 11    Tmean: 50.65
+Iter (par): 3080	  Config: 12    Tmean: 49.61
+Iter (par): 2580	  Config: 13    Tmean: 48.14
+Iter (par): 3320	  Config: 14    Tmean: 50.89
+Iter (par): 3780	  Config: 15    Tmean: 51.63
+Iter (par): 1840	  Config: 16    Tmean: 48.02
+Iter (par): 3040	  Config: 17    Tmean: 50.30
+Iter (par): 3190	  Config: 18    Tmean: 50.17
+Iter (par): 2290	  Config: 19    Tmean: 48.91
+Iter (par): 2140	  Config: 20    Tmean: 47.64
+
+
+ >>> Best configuration:  8    Tmean: 47.21
+   > Time (par): 2012.049 s 
+
+
+
+ >>> BEST CONFIGURATION:  8	 Tmean: 47.21
+
