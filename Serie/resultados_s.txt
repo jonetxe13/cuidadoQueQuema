@@ -1,0 +1,20 @@
+
+  ===================================================================
+    Thermal diffusion - SERIAL version 
+    200 x 100 points, 4 chips
+    T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
+  ===================================================================
+
+Iter (ser): 1700	  Config:  1    Tmean: 72.95
+Iter (ser): 1800	  Config:  2    Tmean: 68.36
+Iter (ser): 1660	  Config:  3    Tmean: 70.45
+Iter (ser): 1830	  Config:  4    Tmean: 73.11
+
+
+ >>> Best configuration:  2    Tmean: 68.36
+   > Time (serial): 1.096 s 
+
+
+
+ >>> BEST CONFIGURATION:  2	 Tmean: 68.36
+
