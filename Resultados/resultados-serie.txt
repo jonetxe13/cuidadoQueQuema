@@ -31,7 +31,7 @@ Iter (ser): 2140	  Config: 20    Tmean: 47.64
 
 
  >>> Best configuration:  8    Tmean: 47.21
-   > Time (serial): 1425.348 s 
+   > Time (serial): 1382.294 s 
 
 
 
