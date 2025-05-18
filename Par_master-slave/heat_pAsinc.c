@@ -84,29 +84,10 @@ int main (int argc, char *argv[])
 
   int NROW_glob, NCOL_glob;
 
-    // MPI communicators and group info
-    MPI_Comm worker_comm = MPI_COMM_NULL; // Comm for the worker group
-    int group_rank = MPI_UNDEFINED;       // Rank within the worker group
-    int group_size = 0;                   // Size of the worker group
-    int group_id = -1;                    // ID of the worker group
-    //
-    //                     // Distribution arrays for the *worker group* (used within the group for scatter/gather, halo)
-    //                         // These are calculated based on the group_size
-    int *group_tam = NULL, *group_dis = NULL; // Inner slice sizes and displacements *within the group's gathered data*
-    int *group_tam_marcos = NULL, *group_dis_marcos = NULL; // Slice sizes and displacements *including halo* within the group's total buffer
-    //
-    //                                     // Local grid slices for workers
-    float *trozo = NULL, *trozo_chips = NULL, *trozo_aux = NULL;
-    int my_tam_marcos_elements = 0; // Total elements in local buffer including halo
-    int my_tam_marcos_rows = 0;     // Total rows in local buffer including halo
-    int my_tam_elements = 0;        // Total elements in local inner buffer
-    int my_tam_rows = 0;            // Total rows in local inner buffer
-    
-    
-    // Packing data for initial broadcast (param, chips, chip_coord)
-    char *pack_initial_data = NULL;
-    int pack_initial_size = 0;
-    int pos = 0;
+  MPI_Comm worker_comm = MPI_COMM_NULL; // Comm for the worker group
+  int group_rank = MPI_UNDEFINED;       // Rank within the worker group
+  int group_size = 0;                   // Size of the worker group
+  int group_id = -1;                    // ID of the worker group
 
   MPI_Init (&argc, &argv);
   MPI_Comm_rank (MPI_COMM_WORLD, &pid);
@@ -165,6 +146,22 @@ int main (int argc, char *argv[])
     t0 = MPI_Wtime();
   }
 
+  int color = MPI_UNDEFINED; // Manager doesn't get a color
+  int key = pid;             // Use world rank for ordering within groups
+
+  // Assign colors to workers (ranks 1 to npr-1) based on 3 groups of 17 (51 workers / 3)
+  int num_worker_groups = 3; // Explicitly 3 groups
+  int workers_per_group = (npr > 1) ? (npr - 1) / num_worker_groups : 0; // 17 for npr=52
+  // int worker_remainder = (npr > 1) ? (npr - 1) % num_worker_groups : 0; // 0 for npr=52
+
+
+  if (pid > 0) { // If it's a worker process
+    group_id = (pid - 1) / workers_per_group; // World rank 1-17 -> group 0, 18-34 -> group 1, 35-51 -> group 2
+    color = group_id;
+  }
+
+  MPI_Comm_split(MPI_COMM_WORLD, color, key, &worker_comm);
+
 
   tam = (int*) malloc(npr * sizeof(int));
   dis = (int*) malloc(npr * sizeof(int));
@@ -172,20 +169,6 @@ int main (int argc, char *argv[])
   dis_marcos = (int*) malloc(npr * sizeof(int));
 
 
-
-  int resto = (NROW_glob-2) % npr;
-  int cociente = (NROW_glob-2) / npr;
-
-  for (i=0; i<npr; i++){
-    tam[i] = cociente;
-    if (i<resto) tam[i]++;
-    tam_marcos[i] = tam[i] + 2;
-    tam[i] *= NCOL_glob;
-    tam_marcos[i] *= NCOL_glob;
-    if (i==0) dis[i] = NCOL_glob;
-    else dis[i] = dis[i-1] + tam[i-1];
-    dis_marcos[i] = dis[i] - NCOL_glob;
-  }
 
   if (pid==0){
     grid = malloc(NROW_glob*NCOL_glob * sizeof(float));
@@ -201,18 +184,54 @@ int main (int argc, char *argv[])
   trozo_chips = (float*) malloc(tam_marcos[pid]*sizeof(float));
   trozo_aux = (float*) malloc(tam_marcos[pid]*sizeof(float));
 
+  conf = 0;
+  int nconf_restantes = param.nconf;
+  if(pid == 0){
+    while(nconf_restantes > 0){
+      int tam_grupos = 15;
 
+      int resto = (NROW_glob-2) % tam_grupos;
+      int cociente = (NROW_glob-2) / tam_grupos;
 
-  // loop to process chip configurations
-  for (conf=0; conf<nconf; conf++)
-  {
+      for (i=0; i<tam_grupos; i++){
+        tam[i] = cociente;
+        if (i<resto) tam[i]++;
+        tam_marcos[i] = tam[i] + 2;
+        tam[i] *= NCOL_glob;
+        tam_marcos[i] *= NCOL_glob;
+        if (i==0) dis[i] = NCOL_glob;
+        else dis[i] = dis[i-1] + tam[i-1];
+        dis_marcos[i] = dis[i] - NCOL_glob;
+      }
 
-    if (pid == 0){
-      // inintial values for grids
-      init_grid_chips (conf, param, chips, chip_coord, grid_chips);
+      int req = 0;
+      MPI_Status status;
+      MPI_Recv(&req, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status); //esperar a recivir una solicitud para mandar bloques
+      MPI_Send(&conf, 1, MPI_INT, status.MPI_SOURCE, 0, MPI_COMM_WORLD );
+      // int grupo = status.source;
+      nconf_restantes--;
+
+      conf++;
     }
-    MPI_Scatterv(&grid_chips[NCOL_glob], tam, dis_marcos, MPI_FLOAT, &trozo_chips[NCOL_glob], tam[pid], MPI_FLOAT, 0, MPI_COMM_WORLD);
+  }
 
+  if(pid != 0){
+    MPI_Comm_rank(worker_comm, &group_rank);
+    MPI_Comm_size(worker_comm, &group_size); // Should be 17 for all worker groups
+
+    int conf = 0;
+    int solic = 1;
+    MPI_Status status;
+
+    if(group_rank == 0){
+      MPI_Send(&solic, 1, MPI_INT, 0, 0, MPI_COMM_WORLD); //request
+      MPI_Recv(&conf, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status); //esperar a recivir una solicitud para mandar bloques
+    }
+    MPI_Bcast(&conf, 1, MPI_INT, 0, worker_comm);
+
+    // MPI_Scatterv(&grid_chips[NCOL_glob], tam, dis_marcos, MPI_FLOAT, &trozo_chips[NCOL_glob], tam[pid], MPI_FLOAT, 0, worker_comm);
+
+    init_grid_chips (conf, param, chips, chip_coord, grid_chips);
     init_grids (t_ext, trozo, trozo_aux, tam_marcos[pid]/NCOL_glob, NCOL_glob);
 
     // main loop: thermal injection/disipation until convergence (t_delta or max_iter)
@@ -220,14 +239,11 @@ int main (int argc, char *argv[])
 
 
     //Recibimos cada trozo a grid y grid_chips
-    MPI_Gatherv(&trozo[NCOL_glob], tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    // MPI_Gatherv(&trozo[NCOL_glob], tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, worker_comm);
 
-
-    if (pid==0) {
-      printf ("  Config: %2d    Tmean: %1.2f\n", conf + 1, Tmean);
+    printf ("  Config: %2d    Tmean: %1.2f\n", conf + 1, Tmean);
     // processing configuration results 
-      results_conf (conf, Tmean, param, grid, grid_chips, &BT);
-    }
+    results_conf (conf, Tmean, param, grid, grid_chips, &BT);
   }
 
   if (pid==0){
