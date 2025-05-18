@@ -196,7 +196,7 @@ int main (int argc, char *argv[])
     Tmean = calculate_Tmean (trozo, trozo_chips, trozo_aux, t_delta, max_iter, t_ext, tam[pid]/NCOL_glob, NROW_glob, NCOL_glob);
 
 
-    //Recibimos cada trozo a grid y grid_chips
+    //Recibimos cada trozo a grid 
     MPI_Gatherv(&trozo[NCOL_glob], tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
 
