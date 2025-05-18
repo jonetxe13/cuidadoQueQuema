@@ -7,12 +7,6 @@
 void thermal_update (float *grid, float *grid_chips, float t_ext, int NROW_loc , int NCOL_glob)
 {
   int i, j, a, b;
-  int pid, npr;
-
-  MPI_Comm_rank( MPI_COMM_WORLD, &pid);
-  MPI_Comm_size( MPI_COMM_WORLD, &npr);
-
-
 
   // heat injection at chip positions
   for (i=1; i<=NROW_loc; i++)
@@ -97,15 +91,16 @@ double thermal_diffusion (float *grid, float *grid_aux, int NROW_loc, int NCOL_g
 }
 
 /************************************************************************************/
-double calculate_Tmean (float *grid, float *grid_chips, float *grid_aux, float t_delta, int max_iter, float t_ext, int NROW_loc, int NROW_glob, int NCOL_glob)
+double calculate_Tmean (float *grid, float *grid_chips, float *grid_aux, float t_delta, int max_iter, float t_ext, int NROW_loc, int NROW_glob, int NCOL_glob, int pid, int npr, MPI_Comm worker_comm)
 {
-  int    i, j, end, niter, pid, npr;
+  int    i, j, end, niter;
   double  Tfull, Tfull_tot;
   double Tmean, Tmean0 = t_ext;
+  //int pid, npr;
 
   end = 0; niter = 0;
-  MPI_Comm_rank( MPI_COMM_WORLD, &pid);
-  MPI_Comm_size( MPI_COMM_WORLD, &npr);
+  //MPI_Comm_rank( MPI_COMM_WORLD, &pid);
+  //MPI_Comm_size( MPI_COMM_WORLD, &npr);
 
   MPI_Request envio_ant, envio_sig, recv_ant, recv_sig;
   envio_ant = envio_sig = recv_ant = recv_sig = MPI_REQUEST_NULL;
@@ -121,18 +116,18 @@ double calculate_Tmean (float *grid, float *grid_chips, float *grid_aux, float t
 
 
     if (pid==0){
-      MPI_Isend(&grid[NROW_loc*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, &envio_sig); //El proceso 0 envia su última fila útil al siguiente
-      MPI_Irecv(&grid[(NROW_loc+1)*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, &recv_sig); //El proceso 0 recibe el marco de abajo del proceso siguiente
+      MPI_Isend(&grid[NROW_loc*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, worker_comm, &envio_sig); //El proceso 0 envia su última fila útil al siguiente
+      MPI_Irecv(&grid[(NROW_loc+1)*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, worker_comm, &recv_sig); //El proceso 0 recibe el marco de abajo del proceso siguiente
     }
     else if(pid == npr-1){
-      MPI_Irecv(&grid[0], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD,&recv_ant); //El último proceso recibe el marco de arriba del proceso anterior
-      MPI_Isend(&grid[NCOL_glob], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD,&envio_ant); //El último proceso envia su primera fila útil al anterior
+      MPI_Irecv(&grid[0], NCOL_glob, MPI_FLOAT, pid-1, 0, worker_comm,&recv_ant); //El último proceso recibe el marco de arriba del proceso anterior
+      MPI_Isend(&grid[NCOL_glob], NCOL_glob, MPI_FLOAT, pid-1, 0, worker_comm,&envio_ant); //El último proceso envia su primera fila útil al anterior
     }
     else{
-      MPI_Irecv(&grid[0], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, &recv_ant); //Cada proceso recibe el marco de arriba del proceso anterior
-      MPI_Isend(&grid[NCOL_glob], NCOL_glob, MPI_FLOAT, pid-1, 0, MPI_COMM_WORLD, &envio_ant); //Cada proceso envia su primera fila útil al anterior
-      MPI_Isend(&grid[NROW_loc*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, &envio_sig); //Cada proceso envia su última fila útil al siguiente
-      MPI_Irecv(&grid[(NROW_loc+1)*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, MPI_COMM_WORLD, &recv_sig);//Cada proceso recibe el marco de abajo del proceso siguiente
+      MPI_Irecv(&grid[0], NCOL_glob, MPI_FLOAT, pid-1, 0, worker_comm, &recv_ant); //Cada proceso recibe el marco de arriba del proceso anterior
+      MPI_Isend(&grid[NCOL_glob], NCOL_glob, MPI_FLOAT, pid-1, 0, worker_comm, &envio_ant); //Cada proceso envia su primera fila útil al anterior
+      MPI_Isend(&grid[NROW_loc*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, worker_comm, &envio_sig); //Cada proceso envia su última fila útil al siguiente
+      MPI_Irecv(&grid[(NROW_loc+1)*NCOL_glob], NCOL_glob, MPI_FLOAT, pid+1, 0, worker_comm, &recv_sig);//Cada proceso recibe el marco de abajo del proceso siguiente
     }
 
     // thermal diffusion
@@ -142,7 +137,7 @@ double calculate_Tmean (float *grid, float *grid_chips, float *grid_aux, float t
     // convergence every 10 iterations
     if (niter % 10 == 0)
     {
-      MPI_Allreduce(&Tfull, &Tfull_tot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce(&Tfull, &Tfull_tot, 1, MPI_DOUBLE, MPI_SUM, worker_comm);
       Tmean = Tfull_tot / ((NCOL_glob-2)*(NROW_glob-2));
       if ((fabs(Tmean - Tmean0) < t_delta) || (niter > max_iter))
         end = 1;

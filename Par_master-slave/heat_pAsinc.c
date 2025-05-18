@@ -84,6 +84,8 @@ int main (int argc, char *argv[])
 
   int NROW_glob, NCOL_glob;
 
+  MPI_Status status;
+
   MPI_Comm worker_comm = MPI_COMM_NULL; // Comm for the worker group
   int group_rank = MPI_UNDEFINED;       // Rank within the worker group
   int group_size = 0;                   // Size of the worker group
@@ -150,8 +152,9 @@ int main (int argc, char *argv[])
   int key = pid;             // Use world rank for ordering within groups
 
   // Assign colors to workers (ranks 1 to npr-1) based on 3 groups of 17 (51 workers / 3)
-  int num_worker_groups = 3; // Explicitly 3 groups
-  int workers_per_group = (npr > 1) ? (npr - 1) / num_worker_groups : 0; // 17 for npr=52
+  int num_worker_groups = (npr - 1)/8; 
+  //int workers_per_group = (npr > 1) ? (npr - 1) / num_worker_groups : 0; // 17 for npr=52
+  int workers_per_group = 8; // 17 for npr=52
   // int worker_remainder = (npr > 1) ? (npr - 1) % num_worker_groups : 0; // 0 for npr=52
 
 
@@ -180,16 +183,15 @@ int main (int argc, char *argv[])
   }
 
 
-  trozo = (float*) malloc(tam_marcos[pid]*sizeof(float));
-  trozo_chips = (float*) malloc(tam_marcos[pid]*sizeof(float));
-  trozo_aux = (float*) malloc(tam_marcos[pid]*sizeof(float));
-
+  
   conf = 0;
   int nconf_restantes = param.nconf;
+  int tam_grupos = 15;
+
   if(pid == 0){
     while(nconf_restantes > 0){
-      int tam_grupos = 15;
 
+      /*
       int resto = (NROW_glob-2) % tam_grupos;
       int cociente = (NROW_glob-2) / tam_grupos;
 
@@ -203,11 +205,15 @@ int main (int argc, char *argv[])
         else dis[i] = dis[i-1] + tam[i-1];
         dis_marcos[i] = dis[i] - NCOL_glob;
       }
+      */
+      
+    init_grid_chips (conf, param, chips, chip_coord, grid_chips);
 
       int req = 0;
       MPI_Status status;
       MPI_Recv(&req, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status); //esperar a recivir una solicitud para mandar bloques
       MPI_Send(&conf, 1, MPI_INT, status.MPI_SOURCE, 0, MPI_COMM_WORLD );
+      MPI_Send(grid_chips, NCOL_glob*NROW_glob, MPI_FLOAT, status.MPI_SOURCE, 1, MPI_COMM_WORLD );
       // int grupo = status.source;
       nconf_restantes--;
 
@@ -221,29 +227,68 @@ int main (int argc, char *argv[])
 
     int conf = 0;
     int solic = 1;
-    MPI_Status status;
 
     if(group_rank == 0){
+      grid = malloc(NROW_glob*NCOL_glob * sizeof(float));
+      grid_chips = malloc(NROW_glob*NCOL_glob * sizeof(float));
+
       MPI_Send(&solic, 1, MPI_INT, 0, 0, MPI_COMM_WORLD); //request
       MPI_Recv(&conf, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status); //esperar a recivir una solicitud para mandar bloques
+      MPI_Recv(grid_chips, NCOL_glob*NROW_glob, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, &status); //esperar a recivir grid_chips 
     }
     MPI_Bcast(&conf, 1, MPI_INT, 0, worker_comm);
 
-    // MPI_Scatterv(&grid_chips[NCOL_glob], tam, dis_marcos, MPI_FLOAT, &trozo_chips[NCOL_glob], tam[pid], MPI_FLOAT, 0, worker_comm);
+      int resto = (NROW_glob-2) % group_size;
+      int cociente = (NROW_glob-2) / group_size;
 
-    init_grid_chips (conf, param, chips, chip_coord, grid_chips);
-    init_grids (t_ext, trozo, trozo_aux, tam_marcos[pid]/NCOL_glob, NCOL_glob);
+      for (i=0; i<group_size; i++){
+        tam[i] = cociente;
+        if (i<resto) tam[i]++;
+        tam_marcos[i] = tam[i] + 2;
+        tam[i] *= NCOL_glob;
+        tam_marcos[i] *= NCOL_glob;
+        if (i==0) dis[i] = NCOL_glob;
+        else dis[i] = dis[i-1] + tam[i-1];
+        dis_marcos[i] = dis[i] - NCOL_glob;
+      }
+
+  trozo = (float*) malloc(tam_marcos[group_rank]*sizeof(float));
+  trozo_chips = (float*) malloc(tam_marcos[group_rank]*sizeof(float));
+  trozo_aux = (float*) malloc(tam_marcos[group_rank]*sizeof(float));
+
+
+
+    MPI_Scatterv(&grid_chips[NCOL_glob], tam, dis_marcos, MPI_FLOAT, &trozo_chips[NCOL_glob], tam[group_rank], MPI_FLOAT, 0, worker_comm);
+
+    //init_grid_chips (conf, param, chips, chip_coord, grid_chips);
+    init_grids (t_ext, trozo, trozo_aux, tam_marcos[group_rank]/NCOL_glob, NCOL_glob);
 
     // main loop: thermal injection/disipation until convergence (t_delta or max_iter)
-    Tmean = calculate_Tmean (trozo, trozo_chips, trozo_aux, t_delta, max_iter, t_ext, tam[pid]/NCOL_glob, NROW_glob, NCOL_glob);
+    Tmean = calculate_Tmean (trozo, trozo_chips, trozo_aux, t_delta, max_iter, t_ext, tam[group_rank]/NCOL_glob, NROW_glob, NCOL_glob, group_rank, group_size, worker_comm);
 
 
     //Recibimos cada trozo a grid y grid_chips
-    // MPI_Gatherv(&trozo[NCOL_glob], tam[pid], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, worker_comm);
+    MPI_Gatherv(&trozo[NCOL_glob], tam[group_rank], MPI_FLOAT, grid, tam, dis, MPI_FLOAT, 0, worker_comm);
 
-    printf ("  Config: %2d    Tmean: %1.2f\n", conf + 1, Tmean);
+    if (group_rank == 0){
+      MPI_Send(&conf, 1, MPI_INT, 0, 2, MPI_COMM_WORLD);
+      MPI_Send(grid, NCOL_glob*NROW_glob, MPI_FLOAT, 0, 3, MPI_COMM_WORLD);
+      MPI_Send(&Tmean, 1, MPI_DOUBLE, 0, 4, MPI_COMM_WORLD);
+    }
+
+    //printf ("  Config: %2d    Tmean: %1.2f\n", conf + 1, Tmean);
     // processing configuration results 
-    results_conf (conf, Tmean, param, grid, grid_chips, &BT);
+    //results_conf (conf, Tmean, param, grid, grid_chips, &BT);
+  }
+
+  if (pid == 0){
+    for (i=0; i<nconf; i++){
+      MPI_Recv(&conf, 1, MPI_INT, MPI_ANY_SOURCE, 2, MPI_COMM_WORLD, &status);
+      MPI_Recv(grid, NCOL_glob*NROW_glob, MPI_FLOAT, status.MPI_SOURCE, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      MPI_Recv(&Tmean, 1, MPI_DOUBLE, status.MPI_SOURCE, 4, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      init_grid_chips (conf, param, chips, chip_coord, grid_chips);
+      results_conf (conf, Tmean, param, grid, grid_chips, &BT);
+    }
   }
 
   if (pid==0){
@@ -261,6 +306,10 @@ int main (int argc, char *argv[])
     free (chips);
     for (i=0; i<param.nconf; i++) free (chip_coord[i]);
     free (chip_coord);
+  }
+
+  if (group_rank==0){
+    free (grid);free (grid_chips);
   }
 
   free(trozo); free(trozo_chips); free(trozo_aux);
