@@ -181,13 +181,13 @@ int main (int argc, char *argv[])
   conf = 0;
   // int nconf_restantes = param.nconf;
   int nconf_mandadas = 0;
-  int nconf_recividas = 0;
+  int nconf_recibidas = 0;
 
   if(pid == 0){
-    while(nconf_recividas < param.nconf){
+    while(nconf_recibidas < param.nconf){
 
       int req = 0;
-      MPI_Recv(&req, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status); //esperar a recivir una solicitud para mandar bloques
+      MPI_Recv(&req, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status); //esperar a recibir una solicitud para mandar bloques
       if(status.MPI_TAG == 0){ //si es una solicitud se manda la config
         if(nconf_mandadas < param.nconf){
           init_grid_chips (conf, param, chips, chip_coord, grid_chips);
@@ -202,17 +202,17 @@ int main (int argc, char *argv[])
           MPI_Send(&conf, 1, MPI_INT, status.MPI_SOURCE, 0, MPI_COMM_WORLD );
         }
       }
-      else if(status.MPI_TAG == 2 ){//si es tag 2 es que ha terminado, asi que recivimos los resultados
-        int conf_recivida = req;
+      else if(status.MPI_TAG == 2 ){//si es tag 2 es que ha terminado, asi que recibimos los resultados
+        int conf_recibida = req;
         MPI_Recv(grid, NCOL_glob*NROW_glob, MPI_FLOAT, status.MPI_SOURCE, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         MPI_Recv(&Tmean, 1, MPI_DOUBLE, status.MPI_SOURCE, 4, MPI_COMM_WORLD, &status);
-        printf ("  Config: %2d    Tmean: %1.2f\n", conf_recivida + 1, Tmean);
+        printf ("  Config: %2d    Tmean: %1.2f\n", conf_recibida + 1, Tmean);
         fflush(stdout);
-        results_conf (conf_recivida, Tmean, param, grid, grid_chips, &BT);
+        results_conf (conf_recibida, Tmean, param, grid, grid_chips, &BT);
 
-        nconf_recividas++;
+        nconf_recibidas++;
 
-        if(nconf_recividas >= param.nconf){
+        if(nconf_recibidas >= param.nconf){
           conf = -1;
           MPI_Send(&conf, 1, MPI_INT, status.MPI_SOURCE, 0, MPI_COMM_WORLD );
         }
@@ -230,12 +230,12 @@ int main (int argc, char *argv[])
     while(1){
       if(pid_grupo == 0){
         MPI_Send(&solic, 1, MPI_INT, 0, 0, MPI_COMM_WORLD); //request
-        MPI_Recv(&conf_local, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status); //esperar a recivir una solicitud para mandar bloques
+        MPI_Recv(&conf_local, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &status); //esperar a recibir una solicitud para mandar bloques
 
         if(conf_local != -1){
           grid = malloc(NROW_glob*NCOL_glob * sizeof(float));
           grid_chips = malloc(NROW_glob*NCOL_glob * sizeof(float));
-          MPI_Recv(grid_chips, NCOL_glob*NROW_glob, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, &status); //esperar a recivir grid_chips 
+          MPI_Recv(grid_chips, NCOL_glob*NROW_glob, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, &status); //esperar a recibir grid_chips 
         }
       }
 
