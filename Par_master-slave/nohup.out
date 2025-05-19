@@ -1,0 +1,37 @@
+nohup: ignoring input
+
+  ===================================================================
+    Thermal diffusion - PAR version 
+    2400 x 1200 points, 4 chips
+    T_ext = 20.0, Tmax_chip = 160.0, T_delta: 0.010, Max_iter: 10000
+  ===================================================================
+
+  Config:  5    Tmean: 49.43
+  Config:  6    Tmean: 50.59
+  Config:  7    Tmean: 50.44
+  Config:  8    Tmean: 50.79
+  Config:  9    Tmean: 49.22
+  Config: 10    Tmean: 47.21
+  Config: 11    Tmean: 51.35
+  Config: 12    Tmean: 51.67
+  Config: 13    Tmean: 49.52
+  Config: 14    Tmean: 51.08
+  Config: 15    Tmean: 49.61
+  Config: 16    Tmean: 50.65
+  Config: 17    Tmean: 48.14
+  Config: 18    Tmean: 48.02
+  Config: 19    Tmean: 50.89
+  Config: 20    Tmean: 51.63
+  Config: 21    Tmean: 50.30
+  Config:  0    Tmean: 50.17
+  Config:  0    Tmean: 48.91
+  Config:  0    Tmean: 47.64
+
+
+ >>> Best configuration:  8    Tmean: 47.21
+   > Time (par): 106.416 s 
+
+
+
+ >>> BEST CONFIGURATION:  8	 Tmean: 47.21
+
